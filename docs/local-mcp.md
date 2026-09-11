@@ -30,7 +30,7 @@ args = ["/Applications/BetterX V3 Desktop.app/Contents/Resources/mcp/index.cjs"]
 tool_timeout_sec = 60
 ```
 
-Access is **off at every app launch**. Disable the menu checkbox to close connections, revoke the session token and erase the in-memory index. Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
+Access is **off at every app launch** unless you chose **Enable and keep enabled** when prompted — that opt-in is remembered across relaunches and restored automatically. Disable the menu checkbox to close connections, revoke the session token and erase the in-memory index (this also clears the remember preference). Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
 
 ## Tools
 

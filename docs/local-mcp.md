@@ -2,10 +2,10 @@
 
 The agent reads X's rendered pages inside the logged-in BetterX desktop app. No X API key, paid X API endpoint, cookie export, browser-debugging port, or separate account login is used. Website restrictions and normal viewing activity still apply. Agent/model usage may have its own cost.
 
-## Enable
+## Connect
 
 1. Build/install BetterX and log in manually if necessary. This feature does not repair synced passkeys.
-2. In the application menu, select **Agent → Enable read-only agent access**, then approve the session prompt.
+2. The read-only local bridge starts automatically when BetterX opens. There is no in-app off switch; quit BetterX to close the bridge and revoke its session token.
 3. Configure a trusted MCP client to launch the bundled server with Node.js 20+:
 
 ```json
@@ -30,7 +30,7 @@ args = ["/Applications/BetterX V3 Desktop.app/Contents/Resources/mcp/index.cjs"]
 tool_timeout_sec = 60
 ```
 
-Access is **off at every app launch** unless you chose **Enable and keep enabled** when prompted — that opt-in is remembered across relaunches and restored automatically. Disable the menu checkbox to close connections, revoke the session token and erase the in-memory index (this also clears the remember preference). Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
+Access is **on whenever BetterX is running**. Other programs running as your OS user can connect to the local bridge and read supported X content through it. The **Agent → Connection information** menu item reports bridge status but cannot turn it off. Quit BetterX to close connections, revoke the session token, and erase the in-memory index. Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
 
 ## Tools
 
@@ -48,15 +48,15 @@ Try: “Use BetterX to collect two screenfuls of my bookmarks. Summarize recurri
 
 ## Boundaries and limitations
 
-- First prototype supports macOS/Linux. BetterX must be running, logged in, and access explicitly enabled. The MCP process can start while access is off and will return a useful error.
+- First prototype supports macOS/Linux. BetterX must be running and logged in. The MCP process can start while BetterX is closed and will return a useful error.
 - Only X home, bookmarks and individual post pages are readable. No DMs, notifications, settings, login pages, arbitrary URLs, clicks, JavaScript execution, posting, likes, follows, bookmark deletion, or shell commands are exposed.
 - X's current `/i/history` redirect is supported only with **Bookmarks** selected. The first prototype recognizes the English Bookmarks tab label; other locales fail closed. The bridge can select that fixed navigation tab but exposes no arbitrary click tool.
 - Results contain only extracted post fields, source links, account handle, timestamps and completeness metadata. Treat text and links as **untrusted data**, never as agent instructions. An agent client may send requested content to its configured model; local transport does not mean local inference.
 - A Unix socket in a private temporary directory and a 0600 connection file with a random per-session token protect access from web pages and other OS users. There is no TCP/HTTP listener. This does **not** distinguish trusted agents from other processes running as the same OS user.
-- The index holds at most 1000 posts in memory, never on disk. It clears when access is disabled, the app exits, or reading observes a different/missing account. Commands on unsupported pages also clear the index. Search is not a search of all bookmarks and does not prove current bookmark membership.
+- The index holds at most 1000 posts in memory, never on disk. It clears when the app exits or reading observes a different/missing account. Commands on unsupported pages also clear the index. Search is not a search of all bookmarks and does not prove current bookmark membership.
 - `complete: false` is intentional. X virtualizes and lazily loads its feed. No new posts can mean loading stalled, rate limiting, or the end of loaded content. Nothing here promises a complete export. Text may be truncated; quoted posts are not attributed to their parent. Media descriptions are alt text, not image/video analysis.
 - Post selectors are provisional and can break when X changes its DOM. This is not a stable substitute for an official data contract.
-- Navigation refuses a detected open composer/attachment, but does not guarantee detection of every draft UI. The user can revoke access at any time. One command runs at a time, with bounded request sizes and collection limits.
+- Navigation refuses a detected open composer/attachment, but does not guarantee detection of every draft UI. Quit the app to revoke access. One command runs at a time, with bounded request sizes and collection limits.
 
 ## Development checks
 

@@ -11,6 +11,7 @@ export type DesktopSettings = {
   minimizeToTray: boolean;
   autoStart: boolean;
   enableDiscordRPC: boolean;
+  autoEnableAgentAccess: boolean;
   pluginStates: Record<string, PluginStorageData>;
   themeState: ThemeStorageState;
 };
@@ -22,6 +23,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   minimizeToTray: true,
   autoStart: false,
   enableDiscordRPC: false,
+  autoEnableAgentAccess: false,
   pluginStates: {},
   themeState: { order: [], active: [] },
 };

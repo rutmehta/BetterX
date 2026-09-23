@@ -5,7 +5,7 @@ The agent reads X's rendered pages inside the logged-in BetterX desktop app. No 
 ## Enable
 
 1. Build/install BetterX and log in manually if necessary. This feature does not repair synced passkeys.
-2. In the application menu, select **Agent → Enable read-only agent access**, then approve the session prompt.
+2. In the application menu, select **Agent → Enable read-only agent access**, then approve the session prompt. To keep access on across launches, select **Agent → Always enable read-only agent access at startup** and approve its one-time prompt.
 3. Configure a trusted MCP client to launch the bundled server with Node.js 20+:
 
 ```json
@@ -30,7 +30,7 @@ args = ["/Applications/BetterX V3 Desktop.app/Contents/Resources/mcp/index.cjs"]
 tool_timeout_sec = 60
 ```
 
-Access is **off at every app launch**. Disable the menu checkbox to close connections, revoke the session token and erase the in-memory index. Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
+Access is off at launch until **Always enable read-only agent access at startup** is selected. With that setting on, BetterX starts a new private bridge automatically at every launch; no new prompt is required. Uncheck **Enable read-only agent access** to revoke the current session, or uncheck **Always enable read-only agent access at startup** to stop automatic access on future launches. Disabling the current session closes connections, revokes the session token and erases the in-memory index. Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
 
 ## Tools
 

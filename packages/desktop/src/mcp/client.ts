@@ -19,7 +19,7 @@ export async function callBridge(input: unknown, path = connectionFile()): Promi
       throw new Error("Invalid connection file");
   } catch {
     throw new Error(
-      "Open BetterX and enable Agent access in its menu. The private connection file is missing or invalid."
+      "Open BetterX to start the local agent bridge. The private connection file is missing or invalid."
     );
   }
   return new Promise((resolve, reject) => {
@@ -34,9 +34,7 @@ export async function callBridge(input: unknown, path = connectionFile()): Promi
       }
     };
     socket.setTimeout(45_000, () => fail("BetterX command timed out"));
-    socket.on("error", () =>
-      fail("Cannot connect to BetterX; reopen the app and enable Agent access")
-    );
+    socket.on("error", () => fail("Cannot connect to BetterX; reopen the app and try again"));
     socket.on("end", () => {
       if (!done) fail("BetterX closed the connection before returning a result");
     });

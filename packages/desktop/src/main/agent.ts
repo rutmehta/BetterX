@@ -105,7 +105,19 @@ export class AgentController {
     if (!before.account || before.state === "login_required")
       throw new Error("Log in to BetterX manually before scrolling");
     const expected = this.window().webContents.getURL();
-    const code = `(() => { if(location.href !== ${JSON.stringify(expected)}) throw new Error('Page changed'); window.scrollBy({top: Math.max(300, innerHeight * 0.8) * ${direction === "down" ? 1 : -1}, behavior: 'instant'}); })()`;
+    const code = `(() => {
+      if (location.href !== ${JSON.stringify(expected)}) throw new Error('Page changed');
+      const articles = document.querySelectorAll('article[data-testid="tweet"]');
+      let element = ${direction === "down" ? "articles[articles.length - 1]" : "articles[0]"};
+      while (element) {
+        const style = getComputedStyle(element);
+        if (/(auto|scroll)/.test(style.overflowY) && element.scrollHeight > element.clientHeight) break;
+        element = element.parentElement;
+      }
+      const target = element || document.scrollingElement || window;
+      const height = target.clientHeight || innerHeight;
+      target.scrollBy({ top: Math.max(300, height * 0.8) * ${direction === "down" ? 1 : -1}, behavior: 'instant' });
+    })()`;
     await this.window().webContents.executeJavaScriptInIsolatedWorld(1001, [{ code }]);
     return this.waitForPosts(signal, before.posts.map((post) => post.id).join(","));
   }
@@ -144,6 +156,7 @@ export class AgentController {
         if (!account) throw new Error("Log in manually; BetterX could not verify the account");
         const posts = new Map(snapshot.posts.map((post) => [post.id, post]));
         let pagesRead = 1;
+        let stalledScrolls = 0;
         let stoppedBecause = "page_limit";
         while (pagesRead < command.args.pages) {
           if (
@@ -157,13 +170,18 @@ export class AgentController {
             this.clear();
             throw new Error("Account changed; collection cancelled and index cleared");
           }
-          pagesRead++;
           const before = posts.size;
           for (const post of snapshot.posts) posts.set(post.id, post);
           if (posts.size === before) {
-            stoppedBecause = "no_new_posts_loaded";
-            break;
+            // A short scroll or a slow X response is not proof of the feed's end.
+            if (++stalledScrolls >= 3) {
+              stoppedBecause = "no_new_posts_loaded";
+              break;
+            }
+            continue;
           }
+          stalledScrolls = 0;
+          pagesRead++;
         }
         return {
           ...snapshot,

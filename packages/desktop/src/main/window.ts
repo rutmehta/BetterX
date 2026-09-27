@@ -3,6 +3,7 @@ import { isAbsolute, join, relative, resolve } from "node:path";
 import { logger } from "@betterx/core";
 import { BrowserWindow, app, protocol, shell } from "electron";
 import type { WebContents } from "electron";
+import { attachContextMenu } from "./context-menu.js";
 import { isTrustedRendererUrl, parseExternalHttpUrl } from "./ipc/security.js";
 import { setupCSP } from "./security.js";
 
@@ -146,6 +147,7 @@ export function createMainWindow(preloadPath: string, enableTransparency: boolea
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
+      backgroundThrottling: false,
       // No disable-web-security, no contextBridge bypass
     },
   });
@@ -178,6 +180,17 @@ export function createMainWindow(preloadPath: string, enableTransparency: boolea
 
   // Allow OAuth popups to open inside the app so postMessage works back to the opener
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isTrustedRendererUrl(url)) {
+      // Service-worker notification clicks can call clients.openWindow().
+      void win.loadURL(url).catch((error) => {
+        logger.error("Failed to open notification URL:", error);
+      });
+      if (win.isMinimized()) win.restore();
+      win.show();
+      win.focus();
+      return { action: "deny" };
+    }
+
     try {
       const external = parseExternalHttpUrl(url);
       if (external.hostname === "accounts.google.com") {
@@ -198,6 +211,8 @@ export function createMainWindow(preloadPath: string, enableTransparency: boolea
     }
     return { action: "deny" };
   });
+
+  attachContextMenu(win.webContents);
 
   setupCSP(win.webContents.session);
   win.loadURL("https://x.com");

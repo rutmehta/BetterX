@@ -32,6 +32,29 @@ tool_timeout_sec = 60
 
 Access is **on whenever BetterX is running**. Other programs running as your OS user can connect to the local bridge and read supported X content through it. The **Agent → Connection information** menu item reports bridge status but cannot turn it off. Quit BetterX to close connections, revoke the session token, and erase the in-memory index. Agent tools change the **same foreground window** you browse; do not switch accounts or navigate concurrently during collection.
 
+## Headless mode
+
+On macOS, add `"--headless"` after the bundled MCP server path in your client configuration. The first tool call starts the installed app in the background if its bridge is unavailable. An already-running app is reused without taking focus. For example:
+
+```toml
+[mcp_servers.betterx]
+command = "node"
+args = ["/Applications/BetterX V3 Desktop.app/Contents/Resources/mcp/index.cjs", "--headless"]
+tool_timeout_sec = 90
+```
+
+To start the app directly without a visible window:
+
+```sh
+open -gj "/Applications/BetterX V3 Desktop.app" --args --headless
+```
+
+For a source build, run `bun run --cwd packages/desktop start:headless` after building. Automatic startup from the MCP flag currently supports the installed macOS app only.
+
+Headless mode uses a hidden Electron browser with the same existing login profile. It suppresses the Dock/tray, menus, push notifications, OAuth popups and external-link opening. A desktop session is still required; this is not a display-server-free Linux service. No cookies are exported or copied. The background app persists after an MCP client disconnects so other clients can reuse it. Quit the process to stop access.
+
+Quit the visible app before switching to headless mode. Open BetterX normally to return to the full UI; a second normal launch restarts a headless instance in interactive mode. If authentication expires, sign in interactively and then restart headlessly. Headless tools retain the same read-only scope and collection limits.
+
 ## Tools
 
 | Tool | Behavior |

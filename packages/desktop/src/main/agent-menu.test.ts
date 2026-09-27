@@ -81,3 +81,14 @@ test("agent bridge starts at launch without consent or an off control", async ()
   expect(startCalls).toEqual(["/tmp/betterx-test/connection.json"]);
   expect(prompts).toEqual([]);
 });
+
+test("headless bridge starts without menus or dialogs", async () => {
+  const { installAgentMenu } = await import("./agent-menu.js");
+  const menusBefore = createdMenus.length;
+  const callsBefore = startCalls.length;
+  installAgentMenu(() => null, true);
+  await Promise.resolve();
+  expect(createdMenus.length).toBe(menusBefore);
+  expect(startCalls.length).toBe(callsBefore + 1);
+  expect(prompts).toEqual([]);
+});

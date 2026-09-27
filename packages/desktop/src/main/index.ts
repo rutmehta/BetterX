@@ -103,6 +103,8 @@ if (process.platform === "linux") {
 
 // ─── Single Instance Lock ─────────────────────────────────────────────────────
 
+const headless = process.argv.includes("--headless");
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -120,6 +122,7 @@ app.setAsDefaultProtocolClient("betterx");
  * Converts to https:// and navigates the main window.
  */
 function handleDeepLink(url: string): void {
+  if (headless) return;
   try {
     const parsed = new URL(url);
     const host = parsed.hostname;
@@ -154,8 +157,16 @@ if (process.platform === "win32") {
 app.whenReady().then(async () => {
   // Ensure BetterX directory exists
   await mkdir(BETTERX_DIR, { recursive: true });
-  await desktopPushService.initialize();
-  configureDesktopNotificationPermissions(session.defaultSession);
+  if (headless) {
+    app.dock?.hide();
+    session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) =>
+      callback(false)
+    );
+    session.defaultSession.setPermissionCheckHandler(() => false);
+  } else {
+    await desktopPushService.initialize();
+    configureDesktopNotificationPermissions(session.defaultSession);
+  }
 
   // Set up betterx:// protocol handler
   handleBetterxProtocol();
@@ -177,7 +188,7 @@ app.whenReady().then(async () => {
   registerThemeHandlers();
   registerSettingsHandlers();
   registerDiscordRPCHandlers();
-  registerDesktopPushHandlers(desktopPushService);
+  if (!headless) registerDesktopPushHandlers(desktopPushService);
   ipcMain.handle("bx:renderer-module:load", async (event, name: unknown) => {
     assertTrustedSender(event);
     if (name !== "editor" && name !== "emoji") throw new Error("Invalid renderer module");
@@ -195,6 +206,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("bx:oauth:open", async (event, url: string) => {
     assertTrustedSender(event);
+    if (headless) throw new Error("Open BetterX normally to sign in");
     const requestedOAuthUrl = new URL(url);
     if (
       requestedOAuthUrl.pathname !== "/auth/twitter" ||
@@ -386,7 +398,7 @@ app.whenReady().then(async () => {
   registerCaptureHandlers(() => mainWindow);
 
   const openMainWindow = (startMinimized = false): BrowserWindow => {
-    const window = createMainWindow(PRELOAD_PATH, getSetting("enableTransparency"));
+    const window = createMainWindow(PRELOAD_PATH, getSetting("enableTransparency"), () => headless);
     mainWindow = window;
     window.on("close", (event) => {
       if (
@@ -400,16 +412,16 @@ app.whenReady().then(async () => {
     window.on("closed", () => {
       if (mainWindow === window) mainWindow = null;
     });
-    if (startMinimized) window.minimize();
+    if (startMinimized && !headless) window.minimize();
     return window;
   };
 
   openMainWindow(getSetting("startMinimized"));
-  installAgentMenu(() => mainWindow);
+  installAgentMenu(() => mainWindow, headless);
 
   // Tray
   const iconPath = join(__dirname, "../../assets/icon.png");
-  if (existsSync(iconPath)) {
+  if (!headless && existsSync(iconPath)) {
     createTray(iconPath, () => mainWindow);
     setNotificationFallbackIcon(iconPath);
   }
@@ -420,15 +432,15 @@ app.whenReady().then(async () => {
   }
 
   // Start minimized?
-  app.setLoginItemSettings({ openAtLogin: getSetting("autoStart") });
+  if (!headless) app.setLoginItemSettings({ openAtLogin: getSetting("autoStart") });
 
   // Discord RPC
-  if (getSetting("enableDiscordRPC")) {
+  if (!headless && getSetting("enableDiscordRPC")) {
     void initializeDiscordRPC();
   }
 
   settingsStore.onDidChange("enableDiscordRPC", (enabled) => {
-    if (enabled) {
+    if (enabled && !headless) {
       void initializeDiscordRPC();
     } else {
       void destroyDiscordRPC();
@@ -436,6 +448,11 @@ app.whenReady().then(async () => {
   });
 
   app.on("activate", () => {
+    if (headless) {
+      app.relaunch({ args: process.argv.slice(1).filter((arg) => arg !== "--headless") });
+      app.quit();
+      return;
+    }
     if (BrowserWindow.getAllWindows().length === 0) openMainWindow();
   });
 
@@ -464,6 +481,12 @@ app.whenReady().then(async () => {
 
 // Focus existing window on second instance; handle deep link URLs (Linux/Windows)
 app.on("second-instance", (_event, argv) => {
+  if (argv.includes("--headless")) return;
+  if (headless) {
+    app.relaunch({ args: process.argv.slice(1).filter((arg) => arg !== "--headless") });
+    app.quit();
+    return;
+  }
   // On Linux/Windows, the deep link URL is passed as the last CLI argument
   const deepLink = argv.find((arg) => arg.startsWith("betterx://"));
   if (deepLink) {

@@ -134,8 +134,13 @@ export function handleBetterxProtocol(): void {
   });
 }
 
-export function createMainWindow(preloadPath: string, enableTransparency: boolean): BrowserWindow {
+export function createMainWindow(
+  preloadPath: string,
+  enableTransparency: boolean,
+  isHeadless = () => false
+): BrowserWindow {
   const win = new BrowserWindow({
+    show: !isHeadless(),
     width: 1280,
     height: 720,
     title: "BetterX V3 Desktop",
@@ -167,6 +172,7 @@ export function createMainWindow(preloadPath: string, enableTransparency: boolea
   win.webContents.on("will-navigate", (event, url) => {
     if (isTrustedRendererUrl(url)) return;
     event.preventDefault();
+    if (isHeadless()) return;
     try {
       void shell.openExternal(parseExternalHttpUrl(url).toString());
     } catch {
@@ -180,6 +186,7 @@ export function createMainWindow(preloadPath: string, enableTransparency: boolea
 
   // Allow OAuth popups to open inside the app so postMessage works back to the opener
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (isHeadless()) return { action: "deny" };
     if (isTrustedRendererUrl(url)) {
       // Service-worker notification clicks can call clients.openWindow().
       void win.loadURL(url).catch((error) => {

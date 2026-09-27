@@ -8,6 +8,7 @@
     "clean": "rm -rf dist",
     "build": "bun run build:main && bun run build:preload && bun run build:editor && bun run build:emoji && bun run build:bundle && bun run build:mcp",
     "build:mcp": "bun build src/mcp/index.ts --target=node --format=cjs --outfile=dist/mcp/index.cjs",
+    "start:headless": "electron . --headless",
     "start:mcp": "node dist/mcp/index.cjs",
     "build:main": "vite build --config vite.main.config.ts",
     "build:preload": "vite build --config vite.preload.config.ts",

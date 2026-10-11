@@ -6,6 +6,8 @@ import { type Command, type Snapshot, isReadablePage } from "../mcp/protocol.js"
 
 export class AgentController {
   private index = new SessionIndex();
+  private active = 0;
+  private restoreThrottling = false;
   constructor(private getWindow: () => BrowserWindow | null) {}
   clear() {
     this.index.clear();
@@ -124,6 +126,22 @@ export class AgentController {
 
   async execute(command: Command, signal: AbortSignal): Promise<unknown> {
     signal.throwIfAborted();
+    // A hidden window is throttled; keep X rendering while agent commands run.
+    const win = this.getWindow();
+    const webContents = win && !win.isDestroyed() ? win.webContents : null;
+    if (webContents && this.active++ === 0) {
+      this.restoreThrottling = webContents.getBackgroundThrottling();
+      if (this.restoreThrottling) webContents.setBackgroundThrottling(false);
+    }
+    try {
+      return await this.run(command, signal);
+    } finally {
+      if (webContents && --this.active === 0 && this.restoreThrottling && !win?.isDestroyed())
+        webContents.setBackgroundThrottling(true);
+    }
+  }
+
+  private async run(command: Command, signal: AbortSignal): Promise<unknown> {
     switch (command.name) {
       case "get_status": {
         const url = this.window().webContents.getURL();

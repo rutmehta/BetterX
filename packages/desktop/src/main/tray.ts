@@ -49,11 +49,25 @@ function buildMenu(getWindow: WindowProvider): Menu {
   ]);
 }
 
+// macOS draws tray images at their point size, so the 256px app icon would fill
+// the menu bar. Use an 18pt template image (with a @2x representation) instead.
+function createTrayImage(iconPath: string): Electron.NativeImage {
+  const source = nativeImage.createFromPath(iconPath);
+  if (source.isEmpty() || process.platform !== "darwin") return source;
+  const image = nativeImage.createEmpty();
+  for (const scaleFactor of [1, 2]) {
+    const size = 18 * scaleFactor;
+    const resized = source.resize({ width: size, height: size, quality: "best" });
+    image.addRepresentation({ scaleFactor, width: size, height: size, buffer: resized.toPNG() });
+  }
+  image.setTemplateImage(true);
+  return image;
+}
+
 export function createTray(iconPath: string, getWindow: WindowProvider): void {
   if (tray) return;
 
-  const icon = nativeImage.createFromPath(iconPath);
-  tray = new Tray(icon.isEmpty() ? nativeImage.createEmpty() : icon);
+  tray = new Tray(createTrayImage(iconPath));
   tray.setToolTip("BetterX V3");
   tray.setContextMenu(buildMenu(getWindow));
 

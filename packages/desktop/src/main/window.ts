@@ -152,7 +152,9 @@ export function createMainWindow(
       contextIsolation: true,
       sandbox: true,
       nodeIntegration: false,
-      backgroundThrottling: false,
+      // Let Chromium throttle X while hidden in the tray; agent commands and
+      // headless sessions turn throttling off while they need the page live.
+      backgroundThrottling: !isHeadless(),
       // No disable-web-security, no contextBridge bypass
     },
   });

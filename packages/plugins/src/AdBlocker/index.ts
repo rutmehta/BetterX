@@ -48,6 +48,10 @@ export default definePlugin({
     document.querySelectorAll<HTMLElement>('[data-testid="cellInnerDiv"]').forEach(processPost);
 
     adUnsub = DOMObserver.subscribe((mutations) => {
+      // X virtualizes the timeline; drop removed cells so they can be garbage collected.
+      for (const post of processedPosts.keys()) {
+        if (!post.isConnected) processedPosts.delete(post);
+      }
       const posts = new Set<HTMLElement>();
       for (const mutation of mutations) {
         for (const node of mutation.addedNodes) {

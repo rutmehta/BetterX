@@ -124,6 +124,9 @@ let unsubscribeObserver: (() => void) | null = null;
 const positionedParents = new Map<HTMLElement, string>();
 
 function injectStars(): void {
+  for (const parent of positionedParents.keys()) {
+    if (!parent.isConnected) positionedParents.delete(parent);
+  }
   document
     .querySelectorAll<HTMLImageElement>('img[alt][src*="tenor.com"], img[alt][src*="giphy.com"]')
     .forEach((img) => {

@@ -28,6 +28,7 @@ function fixture(options: { nestedScroll?: boolean; stalledScrolls?: number } = 
     }
     return doc;
   };
+  let throttled = true;
   const win = {
     isDestroyed: () => false,
     loadURL: async (next: string) => {
@@ -36,6 +37,10 @@ function fixture(options: { nestedScroll?: boolean; stalledScrolls?: number } = 
     },
     webContents: {
       getURL: () => url,
+      getBackgroundThrottling: () => throttled,
+      setBackgroundThrottling: (value: boolean) => {
+        throttled = value;
+      },
       stop() {},
       executeJavaScriptInIsolatedWorld: async (_world: number, scripts: { code: string }[]) =>
         runInNewContext(scripts[0]?.code ?? "", {

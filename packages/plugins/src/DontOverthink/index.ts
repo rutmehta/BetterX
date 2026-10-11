@@ -47,6 +47,16 @@ export default definePlugin({
       };
 
       const checkAndStart = setInterval(() => {
+        if (!timerDiv.isConnected) {
+          // Composer closed: stop polling so the detached composer can be collected.
+          clearInterval(checkAndStart);
+          dontOverthinkTimers.delete(checkAndStart);
+          if (timerId) {
+            clearInterval(timerId);
+            dontOverthinkTimers.delete(timerId);
+          }
+          return;
+        }
         const btn = findPostButton();
         if (btn && !btn.disabled) {
           if (!timerId) {

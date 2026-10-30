@@ -12,6 +12,7 @@ const __dirname = dirname(__filename);
 import { logger } from "@betterx/core";
 
 import { registerCaptureHandlers } from "./ipc/capture.js";
+import { fetchCloud } from "./ipc/cloud-fetch.js";
 import {
   configureDesktopNotificationPermissions,
   registerDesktopPushHandlers,
@@ -316,12 +317,10 @@ app.whenReady().then(async () => {
         const headers: Record<string, string> = {};
         if (cookie) headers.Cookie = cookie;
         if (options?.body) headers["Content-Type"] = "application/json";
-        const res = await fetch(new URL(request.path, server.origin), {
+        const res = await fetchCloud(new URL(request.path, server.origin), {
           method: request.method,
           headers,
           body: options?.body ?? null,
-          redirect: "manual",
-          signal: AbortSignal.timeout(20_000),
         });
 
         // Sync Set-Cookie back into Electron's session cookie jar so logout

@@ -16,14 +16,18 @@ function fixture(options: { nestedScroll?: boolean; stalledScrolls?: number } = 
   const document = () => {
     const doc = parseHTML(`<a data-testid="AppTabBar_Profile_Link" href="/${account}">Profile</a>
     ${draft ? '<div contenteditable="true" data-testid="tweetTextarea_0">Unsaved draft</div>' : ""}
-    <div id="timeline"><article data-testid="tweet"><div data-testid="User-Name"><a href="/alice/status/${100 + page}"><time datetime="2026-09-07">Today</time></a></div><div data-testid="tweetText">Memory notes ${page}</div></article></div>`)
-      .document;
+    <div id="timeline"><article data-testid="tweet"><div data-testid="User-Name"><a href="/alice/status/${100 + page}"><time datetime="2026-09-07">Today</time></a></div><div data-testid="tweetText">Memory notes ${page}</div></article></div>`).document;
     if (options.nestedScroll) {
-      const timeline = doc.querySelector("#timeline")!;
+      const timeline = doc.querySelector("#timeline");
+      if (!timeline) throw new Error("fixture is missing #timeline");
       Object.defineProperties(timeline, {
         scrollHeight: { value: 2000 },
         clientHeight: { value: 500 },
-        scrollBy: { value: () => { if (++scrolls > (options.stalledScrolls ?? 0)) page++; } },
+        scrollBy: {
+          value: () => {
+            if (++scrolls > (options.stalledScrolls ?? 0)) page++;
+          },
+        },
       });
     }
     return doc;

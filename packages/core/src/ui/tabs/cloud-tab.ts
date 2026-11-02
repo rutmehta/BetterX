@@ -1,5 +1,5 @@
 import type { PluginStorageData } from "../../types/plugin.js";
-import type { IStorage } from "../../types/storage.js";
+import { DEFAULT_CLOUD_SYNC_SETTINGS, type IStorage } from "../../types/storage.js";
 import type { ThemeStorageState } from "../../types/theme.js";
 import { BETTERX_VERSION } from "../../utils/constants.js";
 import { logger } from "../../utils/logger.js";
@@ -8,7 +8,7 @@ import type { BetterXContext, SettingsTab } from "../tab-registry.js";
 
 // ─── Cloud Sync Tab ───────────────────────────────────────────────────────────
 
-const DEFAULT_SERVER = "https://cloud.betterx.mopigames.dev";
+const DEFAULT_SERVER = DEFAULT_CLOUD_SYNC_SETTINGS.serverUrl;
 const AUTO_SYNC_INTERVAL_MS = 30_000;
 const MAX_CONFIG_CHARS = 5_000_000;
 const MAX_PLUGINS = 250;
@@ -142,13 +142,15 @@ async function pushCloudConfig(storage: IStorage, server: string): Promise<boole
 }
 
 async function runAutoSync(ctx: BetterXContext): Promise<void> {
-  if (autoSyncRunning || localStorage.getItem("bx_autosync") !== "true") return;
+  if (autoSyncRunning) return;
   autoSyncRunning = true;
   try {
+    const settings = await ctx.storage.getCloudSyncSettings();
+    if (!settings.autoSync) return;
     const config = await collectCloudConfig(ctx.storage);
     const snapshot = JSON.stringify(config);
     if (snapshot === lastAutoSyncSnapshot) return;
-    const server = normalizeServer(localStorage.getItem("bx_cloud_server") || DEFAULT_SERVER);
+    const server = normalizeServer(settings.serverUrl || DEFAULT_SERVER);
     const response = await proxyFetch(`${server}/api/config`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -166,7 +168,6 @@ async function runAutoSync(ctx: BetterXContext): Promise<void> {
 export function startCloudAutoSync(ctx: BetterXContext): void {
   if (autoSyncTimer !== null) window.clearInterval(autoSyncTimer);
   autoSyncTimer = null;
-  if (localStorage.getItem("bx_autosync") !== "true") return;
   lastAutoSyncSnapshot = "";
   void runAutoSync(ctx);
   autoSyncTimer = window.setInterval(() => void runAutoSync(ctx), AUTO_SYNC_INTERVAL_MS);
@@ -298,7 +299,7 @@ async function refreshStatus(container: HTMLElement, ctx: BetterXContext) {
   let server: string;
   try {
     server = normalizeServer(
-      serverInput?.value || localStorage.getItem("bx_cloud_server") || DEFAULT_SERVER
+      serverInput?.value || (await ctx.storage.getCloudSyncSettings()).serverUrl || DEFAULT_SERVER
     );
   } catch {
     setDisconnected("Invalid Server URL");
@@ -350,11 +351,15 @@ async function setupEvents(container: HTMLElement, ctx: BetterXContext) {
   const autoSyncToggle = container.querySelector("#cloud-autosync-toggle") as HTMLInputElement;
   const serverInput = container.querySelector("#cloud-server-url") as HTMLInputElement;
 
+  const settings = await ctx.storage.getCloudSyncSettings();
+  serverInput.value = settings.serverUrl || DEFAULT_SERVER;
   const getServer = () => normalizeServer(serverInput.value || DEFAULT_SERVER);
 
-  serverInput.addEventListener("change", () => {
+  serverInput.addEventListener("change", async () => {
     try {
-      localStorage.setItem("bx_cloud_server", getServer());
+      const serverUrl = getServer();
+      await ctx.storage.setCloudSyncSettings({ ...settings, serverUrl });
+      settings.serverUrl = serverUrl;
     } catch (error) {
       ctx.notifications.showError(
         error instanceof Error ? error.message : "Invalid cloud server URL"
@@ -463,18 +468,23 @@ async function setupEvents(container: HTMLElement, ctx: BetterXContext) {
     }
   });
 
-  autoSyncToggle.checked = localStorage.getItem("bx_autosync") === "true";
-  autoSyncToggle.addEventListener("change", () => {
-    localStorage.setItem("bx_autosync", String(autoSyncToggle.checked));
-    startCloudAutoSync(ctx);
+  autoSyncToggle.checked = settings.autoSync;
+  autoSyncToggle.addEventListener("change", async () => {
+    try {
+      const autoSync = autoSyncToggle.checked;
+      await ctx.storage.setCloudSyncSettings({ ...settings, autoSync });
+      settings.autoSync = autoSync;
+      startCloudAutoSync(ctx);
+    } catch {
+      autoSyncToggle.checked = settings.autoSync;
+      ctx.notifications.showError("Failed to save auto-sync setting");
+    }
   });
 }
 
 let _unsubOAuth: (() => void) | null = null;
 
 function init(container: HTMLElement, ctx: BetterXContext): void {
-  const savedServer = localStorage.getItem("bx_cloud_server") || DEFAULT_SERVER;
-
   container.innerHTML = `
     <div class="bx-cloud-grid">
 
@@ -546,11 +556,9 @@ function init(container: HTMLElement, ctx: BetterXContext): void {
     </div>
   `;
 
-  const serverInput = container.querySelector<HTMLInputElement>("#cloud-server-url");
-  if (serverInput) serverInput.value = savedServer;
-
-  setupEvents(container, ctx);
-  refreshStatus(container, ctx);
+  void setupEvents(container, ctx)
+    .then(() => refreshStatus(container, ctx))
+    .catch(() => ctx.notifications.showError("Failed to load cloud sync settings"));
 
   // Replace any previous listener so re-inits don't stack callbacks
   _unsubOAuth?.();

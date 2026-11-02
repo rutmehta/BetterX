@@ -2,6 +2,7 @@ import { BrowserWindow, app, dialog, ipcMain } from "electron";
 import { getAllSettings, getSetting, setSetting } from "../services/settings.js";
 import type { DesktopSettings } from "../services/settings.js";
 import { assertTrustedSender } from "./security.js";
+import { assertCloudSyncSettings } from "./settings-validation.js";
 
 // ─── Settings IPC Handlers ────────────────────────────────────────────────────
 
@@ -59,6 +60,7 @@ const SETTING_KEYS = new Set<keyof DesktopSettings>([
   "minimizeToTray",
   "autoStart",
   "enableDiscordRPC",
+  "cloudSyncSettings",
   "pluginStates",
   "themeState",
 ]);
@@ -71,6 +73,10 @@ function assertSettingKey(key: unknown): asserts key is keyof DesktopSettings {
 
 function assertSettingValue(key: unknown, value: unknown): asserts key is keyof DesktopSettings {
   assertSettingKey(key);
+  if (key === "cloudSyncSettings") {
+    assertCloudSyncSettings(value);
+    return;
+  }
   if (key === "bundlePath") {
     if (typeof value !== "string") throw new Error("Invalid bundle path");
     return;

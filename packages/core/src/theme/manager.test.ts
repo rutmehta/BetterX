@@ -5,6 +5,11 @@ import type { ThemeStorageState } from "../types/theme.js";
 import { ThemeManager } from "./manager.js";
 
 class ThemeStorage implements IStorage {
+  async getCloudSyncSettings() {
+    return { serverUrl: "https://cloud.betterx.mopigames.dev", autoSync: false };
+  }
+  async setCloudSyncSettings(): Promise<void> {}
+
   css = "old";
   failWrites = false;
 

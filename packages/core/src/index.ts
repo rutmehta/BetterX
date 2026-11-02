@@ -15,7 +15,8 @@ export type {
   SelectOption,
 } from "./types/plugin.js";
 export type { Theme, ThemeStorageState } from "./types/theme.js";
-export type { IStorage } from "./types/storage.js";
+export { DEFAULT_CLOUD_SYNC_SETTINGS } from "./types/storage.js";
+export type { CloudSyncSettings, IStorage } from "./types/storage.js";
 export type {
   NotificationOptions,
   NotificationType,

@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 import { logger } from "@betterx/core";
 
+import { installAgentMenu } from "./agent-menu.js";
 import { registerCaptureHandlers } from "./ipc/capture.js";
 import {
   configureDesktopNotificationPermissions,
@@ -31,7 +32,6 @@ import { DesktopPushService, setNotificationFallbackIcon } from "./services/desk
 import { destroyDiscordRPC, initializeDiscordRPC } from "./services/discord-rpc.js";
 import { getSetting, settingsStore } from "./services/settings.js";
 import { createTray } from "./tray.js";
-import { installAgentMenu } from "./agent-menu.js";
 import {
   createMainWindow,
   handleBetterxProtocol,

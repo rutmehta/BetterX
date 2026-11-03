@@ -22,6 +22,10 @@ const initialBridge = (
   globalThis as typeof globalThis & { BetterXAndroid?: NativeBridge | undefined }
 ).BetterXAndroid;
 const nativePostMessage = initialBridge?.postMessage.bind(initialBridge);
+// Captured at document-start so later page scripts cannot hook serialization
+// and read the capability token.
+const nativeStringify = JSON.stringify;
+const nativeParse = JSON.parse;
 try {
   (globalThis as typeof globalThis & { BetterXAndroid?: NativeBridge | undefined }).BetterXAndroid =
     undefined;
@@ -60,7 +64,7 @@ export async function requestNative<T>(payload: NativePayload): Promise<T> {
     bridge.onmessage = (event) => {
       let message: NativeResponse | null = null;
       try {
-        message = JSON.parse(event.data) as NativeResponse;
+        message = nativeParse(event.data) as NativeResponse;
       } catch {
         return;
       }
@@ -79,7 +83,8 @@ export async function requestNative<T>(payload: NativePayload): Promise<T> {
   }
 
   const id = `${Date.now().toString(36)}-${++requestSeq}`;
-  const request = { id, token: BRIDGE_TOKEN, ...payload };
+  // Null prototype so a page-defined Object.prototype.toJSON never sees the token.
+  const request = { __proto__: null, id, token: BRIDGE_TOKEN, ...payload };
 
   return await new Promise<T>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
@@ -100,7 +105,7 @@ export async function requestNative<T>(payload: NativePayload): Promise<T> {
 
     try {
       if (!nativePostMessage) throw new Error("BetterXAndroid bridge unavailable");
-      nativePostMessage(JSON.stringify(request));
+      nativePostMessage(nativeStringify(request));
     } catch (error) {
       pendingRequests.delete(id);
       window.clearTimeout(timeout);

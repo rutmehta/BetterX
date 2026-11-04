@@ -71,6 +71,22 @@ app.use(
 );
 
 // ─── Middleware for Auth ─────────────────────────────────────────────────────
+async function verifySessionToken(token: string) {
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET, {
+      algorithms: ["HS256"],
+      issuer: BASE_URL.origin,
+      audience: "betterx-cloud",
+    });
+    if (typeof payload.id !== "string" || !payload.id || typeof payload.jti !== "string") {
+      return null;
+    }
+    return { id: payload.id, jti: payload.jti, username: payload.username };
+  } catch {
+    return null;
+  }
+}
+
 const authMiddleware: MiddlewareHandler<Env> = async (c, next) => {
   const token = getCookie(c, "bx_session");
   const path = c.req.path;
@@ -82,12 +98,14 @@ const authMiddleware: MiddlewareHandler<Env> = async (c, next) => {
   }
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET, {
-      issuer: BASE_URL.origin,
-      audience: "betterx-cloud",
-    });
-    if (typeof payload.id !== "string" || payload.id.length === 0) {
-      throw new Error("Session is missing a user id");
+    const payload = await verifySessionToken(token);
+    if (
+      !payload ||
+      !db
+        .query("SELECT id FROM sessions WHERE id = ? AND user_id = ? AND expires_at > ?")
+        .get(payload.jti, payload.id, Math.floor(Date.now() / 1000))
+    ) {
+      throw new Error("Session is invalid or revoked");
     }
     const user = { id: payload.id } as { id: string; username?: string };
     if (typeof payload.username === "string") user.username = payload.username;
@@ -241,12 +259,22 @@ app.get("/auth/callback", async (c) => {
     [twitterUser.id, twitterUser.id, username, profileImageUrl]
   );
 
+  const sessionId = randomToken();
+  const expiresAt = Math.floor(Date.now() / 1000) + 30 * 24 * 3600;
   const token = await new SignJWT({ id: twitterUser.id, username })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(BASE_URL.origin)
     .setAudience("betterx-cloud")
-    .setExpirationTime("30d")
+    .setJti(sessionId)
+    .setExpirationTime(expiresAt)
     .sign(JWT_SECRET);
+
+  db.run("DELETE FROM sessions WHERE expires_at <= ?", [Math.floor(Date.now() / 1000)]);
+  db.run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)", [
+    sessionId,
+    twitterUser.id,
+    expiresAt,
+  ]);
 
   const secure = BASE_URL.protocol === "https:";
   setCookie(c, "bx_session", token, {
@@ -259,7 +287,12 @@ app.get("/auth/callback", async (c) => {
   return c.redirect("/");
 });
 
-app.post("/auth/logout", originGuard, (c) => {
+app.post("/auth/logout", originGuard, async (c) => {
+  const token = getCookie(c, "bx_session");
+  const payload = token ? await verifySessionToken(token) : null;
+  if (payload) {
+    db.run("DELETE FROM sessions WHERE id = ? AND user_id = ?", [payload.jti, payload.id]);
+  }
   deleteCookie(c, "bx_session", { path: "/" });
   return c.redirect("/auth/twitter");
 });

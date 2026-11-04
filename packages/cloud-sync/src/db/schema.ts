@@ -36,4 +36,15 @@ db.run(`
   )
 `);
 
+db.run(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    expires_at INTEGER NOT NULL,
+    FOREIGN KEY(user_id) REFERENCES users(id)
+  )
+`);
+
+db.run("CREATE INDEX IF NOT EXISTS sessions_expiry ON sessions(expires_at)");
+
 export { db };

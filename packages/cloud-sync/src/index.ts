@@ -117,6 +117,35 @@ const authMiddleware: MiddlewareHandler<Env> = async (c, next) => {
   }
 };
 
+// ─── CSRF Protection ─────────────────────────────────────────────────────────
+// bx_session is SameSite=None so the extension can sync, which means browsers attach it to
+// cross-site POSTs too. CORS only hides the response; no-cors and form POSTs still reach the
+// handler. Browsers always send Origin on POST, so reject any web origin we haven't allowlisted.
+// Requests without Origin come from non-browser clients (desktop main process, Android bridge).
+// Extension origins are allowed because Firefox/Safari extension IDs are random per install.
+const EXTENSION_PROTOCOLS = new Set([
+  "chrome-extension:",
+  "moz-extension:",
+  "safari-web-extension:",
+]);
+
+function isTrustedOrigin(origin: string | undefined): boolean {
+  if (origin === undefined) return true;
+  if (ALLOWED_ORIGINS.has(origin)) return true;
+  try {
+    return EXTENSION_PROTOCOLS.has(new URL(origin).protocol);
+  } catch {
+    return false;
+  }
+}
+
+const originGuard: MiddlewareHandler<Env> = async (c, next) => {
+  if (!isTrustedOrigin(c.req.header("origin"))) {
+    return c.json({ error: "Forbidden", reason: "untrusted_origin" }, 403);
+  }
+  await next();
+};
+
 // ─── Twitter OAuth Flow ──────────────────────────────────────────────────────
 const TWITTER_OAUTH_URL = "https://twitter.com/i/oauth2/authorize";
 const TWITTER_TOKEN_URL = "https://api.twitter.com/2/oauth2/token";
@@ -258,7 +287,7 @@ app.get("/auth/callback", async (c) => {
   return c.redirect("/");
 });
 
-app.post("/auth/logout", async (c) => {
+app.post("/auth/logout", originGuard, async (c) => {
   const token = getCookie(c, "bx_session");
   const payload = token ? await verifySessionToken(token) : null;
   if (payload) {
@@ -389,8 +418,13 @@ app.get("/api/me", authMiddleware, (c) => {
   });
 });
 
-app.post("/api/config", authMiddleware, async (c) => {
+app.post("/api/config", originGuard, authMiddleware, async (c) => {
   const user = c.get("user");
+  // A non-simple content type forces a CORS preflight for any cross-origin browser caller
+  const contentType = c.req.header("content-type")?.split(";")[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") {
+    return c.json({ error: "Content-Type must be application/json" }, 415);
+  }
   const contentLength = Number(c.req.header("content-length") ?? 0);
   if (contentLength > MAX_CONFIG_BYTES) return c.json({ error: "Config is too large" }, 413);
 

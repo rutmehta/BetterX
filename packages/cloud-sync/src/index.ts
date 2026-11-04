@@ -5,6 +5,7 @@ import { cors } from "hono/cors";
 import { logger as honoLogger } from "hono/logger";
 import { SignJWT, jwtVerify } from "jose";
 import { db } from "./db/schema.js";
+import { fetchTwitterUser } from "./twitter-user.js";
 import { validThemeId } from "./validation.js";
 
 type Env = {
@@ -131,7 +132,6 @@ const originGuard: MiddlewareHandler<Env> = async (c, next) => {
 // ─── Twitter OAuth Flow ──────────────────────────────────────────────────────
 const TWITTER_OAUTH_URL = "https://twitter.com/i/oauth2/authorize";
 const TWITTER_TOKEN_URL = "https://api.twitter.com/2/oauth2/token";
-const TWITTER_USER_URL = "https://api.twitter.com/2/users/me";
 
 function base64Url(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes))
@@ -214,16 +214,18 @@ app.get("/auth/callback", async (c) => {
   }
 
   // Get user info
-  const userRes = await fetch(`${TWITTER_USER_URL}?user.fields=profile_image_url`, {
-    headers: { Authorization: `Bearer ${data.access_token}` },
-  });
-  const userData = (await userRes.json()) as { data?: Record<string, unknown> };
-  const twitterUser = userData.data;
-
-  if (!userRes.ok || typeof twitterUser?.id !== "string") {
-    console.error(`Twitter user fetch failed (${userRes.status})`);
+  const userResult = await fetchTwitterUser(data.access_token);
+  if (!userResult.ok) {
+    console.error(`Twitter user fetch failed (${userResult.status})`);
+    if (userResult.status === 429) {
+      if (userResult.retryAfterSeconds !== undefined) {
+        c.header("Retry-After", String(userResult.retryAfterSeconds));
+      }
+      return c.json({ error: "Twitter is rate limiting sign-in, please try again shortly" }, 503);
+    }
     return c.json({ error: "Failed to fetch Twitter user" }, 502);
   }
+  const twitterUser = userResult.user;
 
   // Sync with DB — update username + pfp on re-login
   const username = typeof twitterUser.username === "string" ? twitterUser.username : "unknown";

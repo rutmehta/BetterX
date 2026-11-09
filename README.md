@@ -219,3 +219,4 @@ Contributions are welcome! Whether it's a new plugin, a bug fix, or an improveme
 ## License
 
 BetterX is released under the [GNU General Public License v3.0](LICENSE).
+Tembo smoke test

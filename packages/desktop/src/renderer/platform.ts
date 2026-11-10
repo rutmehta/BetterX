@@ -1,4 +1,4 @@
-import type { IStorage } from "@betterx/core";
+import type { CloudSyncSettings, IStorage } from "@betterx/core";
 import type { PluginStorageData } from "@betterx/core";
 import type { ThemeStorageState } from "@betterx/core";
 
@@ -74,6 +74,15 @@ type ThemeChangedCallback = (id: string, css: string) => void;
 
 export class DesktopStorage implements IStorage {
   private api = window.electronAPI;
+
+  async getCloudSyncSettings(): Promise<CloudSyncSettings> {
+    const value = await this.api.settings.get("cloudSyncSettings");
+    return (value as CloudSyncSettings | undefined) ?? {};
+  }
+
+  async setCloudSyncSettings(settings: CloudSyncSettings): Promise<void> {
+    await this.api.settings.set("cloudSyncSettings", settings);
+  }
 
   async getPluginStates(): Promise<Record<string, PluginStorageData>> {
     const val = await this.api.settings.get(PLUGIN_STATES_KEY);

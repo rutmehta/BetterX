@@ -1,7 +1,8 @@
-import type { IStorage } from "@betterx/core";
+import type { CloudSyncSettings, IStorage } from "@betterx/core";
 import type { PluginStorageData } from "@betterx/core";
 import type { ThemeStorageState } from "@betterx/core";
 import browser from "./browser.js";
+import { getBridge } from "./native-bridge.js";
 
 // ─── Android Storage (IStorage impl) ─────────────────────────────────────────
 // Plugin states + theme metadata → browser.storage.sync
@@ -29,6 +30,17 @@ export class AndroidStorage implements IStorage {
         }
       }
     });
+  }
+
+  async getCloudSyncSettings(): Promise<CloudSyncSettings> {
+    if (!getBridge()) throw new Error("Native storage unavailable");
+    const result = await browser.storage.local.get("bx_cloud_sync_settings");
+    return (result.bx_cloud_sync_settings as CloudSyncSettings | undefined) ?? {};
+  }
+
+  async setCloudSyncSettings(settings: CloudSyncSettings): Promise<void> {
+    if (!getBridge()) throw new Error("Native storage unavailable");
+    await browser.storage.local.set({ bx_cloud_sync_settings: settings });
   }
 
   async getPluginStates(): Promise<Record<string, PluginStorageData>> {

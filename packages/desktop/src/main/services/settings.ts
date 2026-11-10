@@ -1,10 +1,11 @@
-import type { PluginStorageData, ThemeStorageState } from "@betterx/core";
+import type { CloudSyncSettings, PluginStorageData, ThemeStorageState } from "@betterx/core";
 import Store from "electron-store";
 import { BETTERX_DIR } from "../paths.js";
 
 // ─── Settings Service ─────────────────────────────────────────────────────────
 
 export type DesktopSettings = {
+  cloudSyncSettings: CloudSyncSettings;
   bundlePath: string;
   enableTransparency: boolean;
   startMinimized: boolean;
@@ -16,6 +17,7 @@ export type DesktopSettings = {
 };
 
 const DEFAULT_SETTINGS: DesktopSettings = {
+  cloudSyncSettings: {},
   bundlePath: "",
   enableTransparency: false,
   startMinimized: false,

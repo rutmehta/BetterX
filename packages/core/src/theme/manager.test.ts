@@ -8,6 +8,11 @@ class ThemeStorage implements IStorage {
   css = "old";
   failWrites = false;
 
+  async getCloudSyncSettings() {
+    return {};
+  }
+  async setCloudSyncSettings(): Promise<void> {}
+
   async getPluginStates(): Promise<Record<string, PluginStorageData>> {
     return {};
   }

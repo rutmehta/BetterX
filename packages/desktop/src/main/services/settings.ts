@@ -1,4 +1,9 @@
-import type { PluginStorageData, ThemeStorageState } from "@betterx/core";
+import {
+  type CloudSyncSettings,
+  DEFAULT_CLOUD_SYNC_SETTINGS,
+  type PluginStorageData,
+  type ThemeStorageState,
+} from "@betterx/core";
 import Store from "electron-store";
 import { BETTERX_DIR } from "../paths.js";
 
@@ -11,6 +16,7 @@ export type DesktopSettings = {
   minimizeToTray: boolean;
   autoStart: boolean;
   enableDiscordRPC: boolean;
+  cloudSyncSettings: CloudSyncSettings;
   pluginStates: Record<string, PluginStorageData>;
   themeState: ThemeStorageState;
 };
@@ -22,6 +28,7 @@ const DEFAULT_SETTINGS: DesktopSettings = {
   minimizeToTray: true,
   autoStart: false,
   enableDiscordRPC: false,
+  cloudSyncSettings: DEFAULT_CLOUD_SYNC_SETTINGS,
   pluginStates: {},
   themeState: { order: [], active: [] },
 };

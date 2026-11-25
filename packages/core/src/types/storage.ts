@@ -3,7 +3,20 @@ import type { ThemeStorageState } from "./theme.js";
 
 // ─── Storage Abstraction ──────────────────────────────────────────────────────
 
+export interface CloudSyncSettings {
+  serverUrl: string;
+  autoSync: boolean;
+}
+
+export const DEFAULT_CLOUD_SYNC_SETTINGS: CloudSyncSettings = {
+  serverUrl: "https://cloud.betterx.mopigames.dev",
+  autoSync: false,
+};
+
 export interface IStorage {
+  getCloudSyncSettings(): Promise<CloudSyncSettings>;
+  setCloudSyncSettings(settings: CloudSyncSettings): Promise<void>;
+
   // Plugin states
   getPluginStates(): Promise<Record<string, PluginStorageData>>;
   setPluginStates(data: Record<string, PluginStorageData>): Promise<void>;

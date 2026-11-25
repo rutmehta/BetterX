@@ -9,6 +9,11 @@ import {
 import { PluginManager } from "./manager.js";
 
 class MemoryStorage implements IStorage {
+  async getCloudSyncSettings() {
+    return { serverUrl: "https://cloud.betterx.mopigames.dev", autoSync: false };
+  }
+  async setCloudSyncSettings(): Promise<void> {}
+
   pluginStates: Record<string, PluginStorageData>;
   writes = 0;
 

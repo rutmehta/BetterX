@@ -1,4 +1,4 @@
-import type { IStorage } from "@betterx/core";
+import { type CloudSyncSettings, DEFAULT_CLOUD_SYNC_SETTINGS, type IStorage } from "@betterx/core";
 import type { PluginStorageData } from "@betterx/core";
 import type { ThemeStorageState } from "@betterx/core";
 import browser from "webextension-polyfill";
@@ -29,6 +29,19 @@ export class ExtensionStorage implements IStorage {
         }
       }
     });
+  }
+
+  async getCloudSyncSettings(): Promise<CloudSyncSettings> {
+    const result = await browser.storage.local.get("bx_cloud_sync_settings");
+    return (
+      (result.bx_cloud_sync_settings as CloudSyncSettings | undefined) ?? {
+        ...DEFAULT_CLOUD_SYNC_SETTINGS,
+      }
+    );
+  }
+
+  async setCloudSyncSettings(settings: CloudSyncSettings): Promise<void> {
+    await browser.storage.local.set({ bx_cloud_sync_settings: settings });
   }
 
   async getPluginStates(): Promise<Record<string, PluginStorageData>> {

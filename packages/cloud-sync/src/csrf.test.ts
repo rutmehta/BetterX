@@ -32,10 +32,22 @@ function post(path: string, headers: Record<string, string>, body?: string): Pro
 
 beforeAll(async () => {
   app = (await import("./index.js")).default;
+  const { db } = await import("./db/schema.js");
+  db.run("INSERT INTO users (id, twitter_id, username) VALUES (?, ?, ?)", [
+    "user-1",
+    "user-1",
+    "alice",
+  ]);
+  db.run("INSERT INTO sessions (id, user_id, expires_at) VALUES (?, ?, ?)", [
+    "csrf-test-session",
+    "user-1",
+    Math.floor(Date.now() / 1000) + 3600,
+  ]);
   const token = await new SignJWT({ id: "user-1", username: "alice" })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuer(BASE)
     .setAudience("betterx-cloud")
+    .setJti("csrf-test-session")
     .setExpirationTime("1h")
     .sign(new TextEncoder().encode(SECRET));
   cookie = `bx_session=${token}`;

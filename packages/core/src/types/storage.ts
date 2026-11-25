@@ -3,7 +3,16 @@ import type { ThemeStorageState } from "./theme.js";
 
 // ─── Storage Abstraction ──────────────────────────────────────────────────────
 
+export type CloudSyncSettings = {
+  serverUrl?: string;
+  autoSync?: boolean;
+};
+
 export interface IStorage {
+  // Cloud destination and opt-in must never come from page localStorage.
+  getCloudSyncSettings(): Promise<CloudSyncSettings>;
+  setCloudSyncSettings(settings: CloudSyncSettings): Promise<void>;
+
   // Plugin states
   getPluginStates(): Promise<Record<string, PluginStorageData>>;
   setPluginStates(data: Record<string, PluginStorageData>): Promise<void>;

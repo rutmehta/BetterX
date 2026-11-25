@@ -53,6 +53,7 @@ export function registerSettingsHandlers(): void {
 }
 
 const SETTING_KEYS = new Set<keyof DesktopSettings>([
+  "cloudSyncSettings",
   "bundlePath",
   "enableTransparency",
   "startMinimized",
@@ -71,6 +72,19 @@ function assertSettingKey(key: unknown): asserts key is keyof DesktopSettings {
 
 function assertSettingValue(key: unknown, value: unknown): asserts key is keyof DesktopSettings {
   assertSettingKey(key);
+  if (key === "cloudSyncSettings") {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error("Invalid cloud sync settings");
+    }
+    const settings = value as Record<string, unknown>;
+    if (
+      (settings.serverUrl !== undefined && typeof settings.serverUrl !== "string") ||
+      (settings.autoSync !== undefined && typeof settings.autoSync !== "boolean")
+    ) {
+      throw new Error("Invalid cloud sync settings");
+    }
+    return;
+  }
   if (key === "bundlePath") {
     if (typeof value !== "string") throw new Error("Invalid bundle path");
     return;

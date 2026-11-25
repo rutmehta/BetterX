@@ -16,6 +16,11 @@ class MemoryStorage implements IStorage {
     this.pluginStates = pluginStates;
   }
 
+  async getCloudSyncSettings() {
+    return {};
+  }
+  async setCloudSyncSettings(): Promise<void> {}
+
   async getPluginStates(): Promise<Record<string, PluginStorageData>> {
     return this.pluginStates;
   }
